@@ -15,7 +15,7 @@
     "**/node_modules": true,
     "**/out": true,
     "**/.git": true,
-    "**/lib": true
+    // "**/lib": true
   },
   "cSpell.enabled": true
 }

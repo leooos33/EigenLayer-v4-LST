@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import "forge-std/console.sol";
 
 import {Hooks} from "v4-core/libraries/Hooks.sol";
-import {CurrencySettleTake} from "v4-core/libraries/CurrencySettleTake.sol";
+import {CurrencySettler} from "v4-core-test/utils/CurrencySettler.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {OptionBaseLib} from "@src/libraries/OptionBaseLib.sol";
 
@@ -22,7 +22,7 @@ import {IMorpho, Id} from "@forks/morpho/IMorpho.sol";
 import {IOption} from "@src/interfaces/IOption.sol";
 
 abstract contract BaseOptionHook is BaseHook, IOption {
-    using CurrencySettleTake for Currency;
+    using CurrencySettler for Currency;
 
     IERC20 WSTETH = IERC20(OptionBaseLib.WSTETH);
     IWETH WETH = IWETH(OptionBaseLib.WETH);
@@ -57,11 +57,6 @@ abstract contract BaseOptionHook is BaseHook, IOption {
         uint256 _performanceFee
     ) external onlyHookDeployer {
         performanceFee = _performanceFee;
-    }
-
-    function getUserFee(address user) public view returns (uint256) {
-        if (loyalty.isLoyal(user) == 0) return performanceFee;
-        return 0;
     }
 
     mapping(PoolId => int24) lastTick;

@@ -25,9 +25,8 @@ contract CallETH is BaseOptionHook, ERC721 {
 
     constructor(
         IPoolManager poolManager,
-        Id _morphoMarketId,
-        IHedgehogLoyaltyMock _loyalty
-    ) BaseOptionHook(poolManager, _loyalty) ERC721("CallETH", "CALL") {
+        Id _morphoMarketId
+    ) BaseOptionHook(poolManager) ERC721("CallETH", "CALL") {
         morphoMarketId = _morphoMarketId;
     }
 
@@ -110,7 +109,7 @@ contract CallETH is BaseOptionHook, ERC721 {
             tickLower: tickLower,
             tickUpper: tickUpper,
             created: block.timestamp,
-            fee: getUserFee(msg.sender)
+            fee: 0
         });
 
         _mint(to, optionId);
