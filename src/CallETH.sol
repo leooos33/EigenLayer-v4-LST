@@ -16,7 +16,6 @@ import {BaseOptionHook} from "@src/BaseOptionHook.sol";
 
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {Position as MorphoPosition, Id, Market} from "@forks/morpho/IMorpho.sol";
-import {IHedgehogLoyaltyMock} from "@src/interfaces/IHedgehogLoyaltyMock.sol";
 
 /// @title Call like wstETH option
 /// @author IVikkk

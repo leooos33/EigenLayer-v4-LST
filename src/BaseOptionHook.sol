@@ -20,7 +20,6 @@ import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {IWETH} from "@forks/IWETH.sol";
 import {IMorpho, Id} from "@forks/morpho/IMorpho.sol";
 import {IOption} from "@src/interfaces/IOption.sol";
-import {IHedgehogLoyaltyMock} from "@src/interfaces/IHedgehogLoyaltyMock.sol";
 
 abstract contract BaseOptionHook is BaseHook, IOption {
     using CurrencySettleTake for Currency;
@@ -34,8 +33,6 @@ abstract contract BaseOptionHook is BaseHook, IOption {
 
     IMorpho public constant morpho =
         IMorpho(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
-
-    IHedgehogLoyaltyMock public loyalty;
 
     uint256 public priceScalingFactor = 2;
     uint256 public cRatio = 2;
@@ -85,12 +82,7 @@ abstract contract BaseOptionHook is BaseHook, IOption {
         lastTick[poolId] = _tick;
     }
 
-    constructor(
-        IPoolManager _poolManager,
-        IHedgehogLoyaltyMock _loyalty
-    ) BaseHook(_poolManager) {
-        loyalty = _loyalty;
-    }
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
     function getHookPermissions()
         public
