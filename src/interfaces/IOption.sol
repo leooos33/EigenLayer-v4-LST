@@ -16,6 +16,7 @@ interface IOption {
     error NoSwapWillOccur();
 
     struct OptionInfo {
+        PoolKey key;
         uint256 amount;
         int24 tick;
         int24 tickLower;

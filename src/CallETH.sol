@@ -72,6 +72,13 @@ contract CallETH is BaseOptionHook, ERC721 {
         return deltaTickAbs >= rebalanceRange;
     }
 
+    // Anybody could call it, but the task will be emitted for all keepers to take
+    function createRebalanceTask() external {
+        for (uint256 i = 0; i < optionIdCounter; i++) {
+            if (isPriceRebalance(optionInfo[i].key, i)) {}
+        }
+    }
+
     function priceRebalance(PoolKey calldata key, uint256 optionId) external {
         console.log(">> priceRebalance");
         require(isPriceRebalance(key, optionId), "Not enough price change");
@@ -224,6 +231,7 @@ contract CallETH is BaseOptionHook, ERC721 {
         optionId = optionIdCounter;
 
         optionInfo[optionId] = OptionInfo({
+            key: key,
             amount: amount,
             tick: getCurrentTick(key.toId()),
             tickLower: tickLower,
