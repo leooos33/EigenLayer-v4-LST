@@ -20,5 +20,5 @@ solidity-stringutils/=lib/squeeth-monorepo/packages/crab-netting/lib/squeeth-mon
 v3-core/=lib/squeeth-monorepo/packages/zen-bull-vault/lib/v3-core/
 v3-periphery/=lib/squeeth-monorepo/packages/zen-bull-netting/lib/v3-periphery/contracts/
 
-@eigenlayer-contracts/=lib/eigenlayer-middleware/lib/eigenlayer-contracts/
-@eigenlayer-middleware/=lib/eigenlayer-middleware/
+@eigenlayer-contracts/=mev-auction-avs/contracts/lib/eigenlayer-middleware/lib/eigenlayer-contracts/
+@eigenlayer-middleware/=mev-auction-avs/contracts/lib/eigenlayer-middleware/
