@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "@eigenlayer/contracts/libraries/BytesLib.sol";
+import "eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import "./IOptionRebalancingTaskManager.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
+
+// import {IPaymentCoordinator} from "@forks/avs/IPaymentCoordinator.sol";
 
 /**
  * @title Primary entrypoint for procuring services from MevAuction.
  * @author Layr Labs, Inc.
  */
-contract MevAuctionServiceManager is ServiceManagerBase {
+contract OptionRebalancingServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
     IOptionRebalancingTaskManager public immutable OptionRebalancingTaskManager;
@@ -28,14 +30,7 @@ contract MevAuctionServiceManager is ServiceManagerBase {
         IRegistryCoordinator _registryCoordinator,
         IStakeRegistry _stakeRegistry,
         IOptionRebalancingTaskManager _OptionRebalancingTaskManager
-    )
-        ServiceManagerBase(
-            _avsDirectory,
-            IPaymentCoordinator(address(0)), // inc-sq doesn't need to deal with payments
-            _registryCoordinator,
-            _stakeRegistry
-        )
-    {
+    ) ServiceManagerBase(_avsDirectory, _registryCoordinator, _stakeRegistry) {
         OptionRebalancingTaskManager = _OptionRebalancingTaskManager;
     }
 

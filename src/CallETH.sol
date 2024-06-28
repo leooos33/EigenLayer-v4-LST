@@ -63,7 +63,7 @@ contract CallETH is BaseOptionHook, ERC721 {
     }
 
     function isPriceRebalance(
-        PoolKey calldata key,
+        PoolKey memory key,
         uint256 optionId
     ) public view returns (bool) {
         int24 currentTick = getCurrentTick(key.toId());
@@ -75,7 +75,8 @@ contract CallETH is BaseOptionHook, ERC721 {
     // Anybody could call it, but the task will be emitted for all keepers to take
     function createRebalanceTask() external {
         for (uint256 i = 0; i < optionIdCounter; i++) {
-            if (isPriceRebalance(optionInfo[i].key, i)) {}
+            PoolKey memory key = optionInfo[i].key;
+            if (isPriceRebalance(key, i)) {}
         }
     }
 

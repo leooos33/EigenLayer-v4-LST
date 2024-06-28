@@ -26,22 +26,17 @@ interface IOptionRebalancingTaskManager {
         uint256 highestBid
     );
 
-    // STRUCTS
     struct Task {
-        uint256 auctionDuration;
-        uint32 taskCreatedBlock;
-        bytes quorumNumbers;
-        uint32 quorumThresholdPercentage;
+        uint256 optionId;
     }
 
     struct TaskResponse {
-        uint32 referenceTaskIndex;
-        uint256 numberSquared;
+        uint256 optionId;
     }
 
     struct TaskResponseMetadata {
-        uint32 taskResponsedBlock;
-        bytes32 hashOfNonSigners;
+        uint256 optionId;
+        uint256 timestamp;
     }
 
     struct Auction {

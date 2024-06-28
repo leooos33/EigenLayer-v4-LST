@@ -15,11 +15,12 @@
     "**/node_modules": true,
     "**/out": true,
     "**/.git": true,
-    "**/lib": true
+    // "**/lib": true
   },
   "git.ignoredRepositories": [
     "lib/forge-std",
     "lib/v4-core",
+    "lib/eigenlayer-middleware",
     "lib/v4-periphery"
   ],
   "cSpell.enabled": true
