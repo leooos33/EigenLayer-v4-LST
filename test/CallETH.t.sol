@@ -137,6 +137,18 @@ contract CallETHTest is OptionTestBase {
         assertEqMorphoState(address(hook), 0, 0, 0);
     }
 
+    function test_swap_price_up_then_rebalance() public {
+        test_swap_price_up();
+
+        assertEq(hook.isPriceRebalance(key, 0), true);
+        hook.priceRebalance(key, 0);
+
+        assertEqBalanceState(address(hook), 0, 0);
+        assertEqBalanceState(alice.addr, 0, 0);
+        assertOptionV4PositionLiquidity(optionId, 0);
+        assertEqMorphoState(address(hook), 0, 0, 49999736322669483551);
+    }
+
     // -- Helpers --
 
     function init_hook() internal {

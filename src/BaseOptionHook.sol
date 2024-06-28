@@ -38,6 +38,7 @@ abstract contract BaseOptionHook is BaseHook, IOption {
     uint256 public cRatio = 2;
     uint256 public weight = 2;
     uint256 public performanceFee = 1e16;
+    uint256 public rebalanceRange = 100;
 
     function setPriceScalingFactor(
         uint256 _priceScalingFactor
@@ -146,6 +147,10 @@ abstract contract BaseOptionHook is BaseHook, IOption {
             }),
             ZERO_BYTES
         );
+
+        // console.log("~ delta");
+        // console.logInt(delta.amount0());
+        // console.logInt(delta.amount1());
 
         if (delta.amount0() < 0) {
             key.currency0.settle(

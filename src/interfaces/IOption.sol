@@ -36,6 +36,13 @@ interface IOption {
 
     function getTickLast(PoolId poolId) external view returns (int24);
 
+    function isPriceRebalance(
+        PoolKey calldata key,
+        uint256 optionId
+    ) external view returns (bool);
+
+    function priceRebalance(PoolKey calldata key, uint256 optionId) external;
+
     function deposit(
         PoolKey calldata key,
         uint256 amount,

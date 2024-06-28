@@ -62,6 +62,126 @@ contract CallETH is BaseOptionHook, ERC721 {
         revert AddLiquidityThroughHook();
     }
 
+    function isPriceRebalance(
+        PoolKey calldata key,
+        uint256 optionId
+    ) public view returns (bool) {
+        int24 currentTick = getCurrentTick(key.toId());
+        int24 deltaTick = currentTick - optionInfo[optionId].tick;
+        uint24 deltaTickAbs = uint24(deltaTick > 0 ? deltaTick : -deltaTick);
+        return deltaTickAbs >= rebalanceRange;
+    }
+
+    function priceRebalance(PoolKey calldata key, uint256 optionId) external {
+        console.log(">> priceRebalance");
+        require(isPriceRebalance(key, optionId), "Not enough price change");
+
+        {
+            //** swap all OSQTH in WSTETH
+            uint256 balanceOSQTH = OSQTH.balanceOf(address(this));
+            if (balanceOSQTH != 0) {
+                OptionBaseLib.swapOSQTH_WSTETH_In(
+                    uint256(int256(balanceOSQTH))
+                );
+            }
+
+            //** close position into WSTETH & USDC
+            {
+                (
+                    uint128 liquidity,
+                    int24 tickLower,
+                    int24 tickUpper
+                ) = getOptionPosition(key, optionId);
+
+                poolManager.unlock(
+                    abi.encodeCall(
+                        this.unlockModifyPosition,
+                        (key, -int128(liquidity), tickLower, tickUpper)
+                    )
+                );
+            }
+
+            //** if USDC is borrowed buy extra and close the position
+            morphoSync();
+            Market memory m = morpho.market(morphoMarketId);
+            uint256 usdcToRepay = m.totalBorrowAssets;
+            MorphoPosition memory p = morpho.position(
+                morphoMarketId,
+                address(this)
+            );
+
+            if (usdcToRepay != 0) {
+                uint256 balanceUSDC = USDC.balanceOf(address(this));
+                if (usdcToRepay > balanceUSDC) {
+                    OptionBaseLib.swapExactOutput(
+                        address(WSTETH),
+                        address(USDC),
+                        usdcToRepay - balanceUSDC
+                    );
+                } else {
+                    OptionBaseLib.swapExactOutput(
+                        address(USDC),
+                        address(WSTETH),
+                        balanceUSDC
+                    );
+                }
+
+                morphoReplay(0, p.borrowShares);
+            }
+
+            morphoWithdrawCollateral(p.collateral);
+        }
+
+        uint256 amount = WSTETH.balanceOf(address(this));
+        {
+            int24 tickLower;
+            int24 tickUpper;
+            {
+                int24 _tick = getCurrentTick(key.toId());
+                tickLower = OptionMathLib.tickRoundDown(
+                    OptionMathLib.getTickFromPrice(
+                        OptionMathLib.getPriceFromTick(_tick) *
+                            priceScalingFactor
+                    ),
+                    key.tickSpacing
+                );
+                tickUpper = OptionMathLib.tickRoundDown(
+                    OptionMathLib.getTickFromPrice(
+                        OptionMathLib.getPriceFromTick(_tick) *
+                            priceScalingFactor *
+                            2
+                    ),
+                    key.tickSpacing
+                );
+                console.log("Ticks, lower/upper:");
+                console.logInt(tickLower);
+                console.logInt(tickUpper);
+                console.log(amount);
+
+                uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+                    TickMath.getSqrtPriceAtTick(tickUpper),
+                    TickMath.getSqrtPriceAtTick(tickLower),
+                    amount / weight
+                );
+
+                poolManager.unlock(
+                    abi.encodeCall(
+                        this.unlockModifyPosition,
+                        (key, int128(liquidity), tickLower, tickUpper)
+                    )
+                );
+            }
+
+            morphoSupplyCollateral(WSTETH.balanceOf(address(this)));
+            optionId = optionIdCounter;
+
+            optionInfo[optionId].amount = amount;
+            optionInfo[optionId].tick = getCurrentTick(key.toId());
+            optionInfo[optionId].tickLower = tickLower;
+            optionInfo[optionId].tickUpper = tickUpper;
+        }
+    }
+
     function deposit(
         PoolKey calldata key,
         uint256 amount,
