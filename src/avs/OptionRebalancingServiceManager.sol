@@ -5,12 +5,6 @@ import "eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import "./IOptionRebalancingTaskManager.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 
-// import {IPaymentCoordinator} from "@forks/avs/IPaymentCoordinator.sol";
-
-/**
- * @title Primary entrypoint for procuring services from MevAuction.
- * @author Layr Labs, Inc.
- */
 contract OptionRebalancingServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
