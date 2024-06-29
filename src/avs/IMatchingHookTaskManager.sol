@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "../lib/eigenlayer-middleware/src/libraries/BN254.sol";
+import "@eigenlayer-middleware/src/libraries/BN254.sol";
 
-interface IOptionRebalancingTaskManager {
+interface IMatchingHookTaskManager {
     // EVENTS
     event NewTaskCreated(uint32 indexed taskIndex, uint256 optionId);
     event TaskResponded(

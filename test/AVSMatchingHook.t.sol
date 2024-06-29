@@ -14,9 +14,9 @@ import {CallETH} from "@src/CallETH.sol";
 
 import {IOption} from "@src/interfaces/IOption.sol";
 
-import {OptionRebalancingTaskManager} from "@src/avs/OptionRebalancingTaskManager.sol";
-import {IOptionRebalancingTaskManager} from "@src/avs/IOptionRebalancingTaskManager.sol";
-import {OptionRebalancingServiceManager} from "@src/avs/OptionRebalancingServiceManager.sol";
+import {MatchingHookTaskManager} from "@src/avs/MatchingHookTaskManager.sol";
+import {IMatchingHookTaskManager} from "@src/avs/IMatchingHookTaskManager.sol";
+import {MatchingHookServiceManager} from "@src/avs/MatchingHookServiceManager.sol";
 import {IRegistryCoordinator} from "@eigenlayer-middleware/src/interfaces/IRegistryCoordinator.sol";
 import {IPauserRegistry} from "@eigenlayer-middleware/lib/eigenlayer-contracts/src/contracts/interfaces/IPauserRegistry.sol";
 import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
@@ -26,11 +26,11 @@ import {OptionTestBase} from "./libraries/OptionTestBase.sol";
 
 import "forge-std/console.sol";
 
-contract AVSRebalancingCallTest is OptionTestBase {
-    OptionRebalancingServiceManager sm;
-    OptionRebalancingServiceManager smImplementation;
-    OptionRebalancingTaskManager tm;
-    OptionRebalancingTaskManager tmImplementation;
+contract AVSMatchingHookTest is OptionTestBase {
+    MatchingHookServiceManager sm;
+    MatchingHookServiceManager smImplementation;
+    MatchingHookTaskManager tm;
+    MatchingHookTaskManager tmImplementation;
     BLSMockAVSDeployer avsDeployer;
 
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
@@ -185,18 +185,18 @@ contract AVSRebalancingCallTest is OptionTestBase {
             registryCoordinatorOwner
         );
 
-        emit log("Deploying OptionRebalancingTaskManager implementation");
-        tmImplementation = new OptionRebalancingTaskManager(
+        emit log("Deploying MatchingHookTaskManager implementation");
+        tmImplementation = new MatchingHookTaskManager(
             IRegistryCoordinator(registryCoordinator),
             TASK_RESPONSE_WINDOW_BLOCK
         );
-        emit log("OptionRebalancingTaskManager implementation deployed");
+        emit log("MatchingHookTaskManager implementation deployed");
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
         emit log(
-            "Deploying TransparentUpgradeableProxy for OptionRebalancingTaskManager"
+            "Deploying TransparentUpgradeableProxy for MatchingHookTaskManager"
         );
-        tm = OptionRebalancingTaskManager(
+        tm = MatchingHookTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(tmImplementation),
@@ -212,7 +212,7 @@ contract AVSRebalancingCallTest is OptionTestBase {
             )
         );
         emit log(
-            "TransparentUpgradeableProxy for OptionRebalancingTaskManager deployed"
+            "TransparentUpgradeableProxy for MatchingHookTaskManager deployed"
         );
     }
 }

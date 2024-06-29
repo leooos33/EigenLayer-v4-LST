@@ -10,19 +10,19 @@ import {RegistryCoordinator} from "../lib/eigenlayer-middleware/src/RegistryCoor
 import {BLSSignatureChecker, IRegistryCoordinator} from "../lib/eigenlayer-middleware/src/BLSSignatureChecker.sol";
 import {OperatorStateRetriever} from "../lib/eigenlayer-middleware/src/OperatorStateRetriever.sol";
 import "../lib/eigenlayer-middleware/src/libraries/BN254.sol";
-import "./IOptionRebalancingTaskManager.sol";
+import "./IMatchingHookTaskManager.sol";
 
 import "../../../src/interfaces/IOption.sol";
 
 import "../lib/forge-std/src/console.sol";
 
-contract OptionRebalancingTaskManager is
+contract MatchingHookTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     OperatorStateRetriever,
-    IOptionRebalancingTaskManager
+    IMatchingHookTaskManager
 {
     using BN254 for BN254.G1Point;
 
