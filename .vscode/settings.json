@@ -9,7 +9,7 @@
     "**/cspell.dict": true,
     "**/out": true,
     // "**/lib": true,
-    "**/.git": true
+    "**/.git": true,
   },
   "search.exclude": {
     "**/node_modules": true,

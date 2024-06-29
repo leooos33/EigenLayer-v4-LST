@@ -12,6 +12,8 @@ import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRe
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 import "./IOptionRebalancingTaskManager.sol";
 
+import "forge-std/console.sol";
+
 contract OptionRebalancingTaskManager is
     Initializable,
     OwnableUpgradeable,
@@ -42,8 +44,6 @@ contract OptionRebalancingTaskManager is
 
     // mapping of task indices to hash of abi.encode(taskResponse, taskResponseMetadata)
     mapping(uint32 => bytes32) public allTaskResponses;
-
-    mapping(uint32 => Auction) public auctions;
 
     /* MODIFIERS */
     modifier onlyAggregator() {
@@ -84,13 +84,14 @@ contract OptionRebalancingTaskManager is
     /* FUNCTIONS */
     // NOTE: this function creates new auction task, assigns it a taskId
     function createNewTask(uint256 optionId) external {
+        console.log("createNewTask");
         // create a new task struct
         Task memory newTask;
         newTask.optionId = optionId;
 
         allTaskHashes[latestTaskNum] = keccak256(abi.encode(newTask));
 
-        emit NewTaskCreated(latestTaskNum, auctions[latestTaskNum]);
+        emit NewTaskCreated(latestTaskNum, optionId);
 
         latestTaskNum = latestTaskNum + 1;
     }
@@ -114,17 +115,6 @@ contract OptionRebalancingTaskManager is
         require(
             allTaskResponses[taskResponse.referenceTaskIndex] == bytes32(0),
             "Aggregator has already responded to the task"
-        );
-        require(
-            uint32(block.number) <=
-                taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK,
-            "Aggregator has responded to the task too late"
-        );
-
-        require(
-            uint32(block.number) <=
-                taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK,
-            "Aggregator has responded to the task too late"
         );
 
         TaskResponseMetadata memory taskResponseMetadata = TaskResponseMetadata(

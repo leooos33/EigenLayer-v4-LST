@@ -2,7 +2,6 @@
 @src/=src/
 @test/=test/
 @ensdomains/=lib/v4-core/node_modules/@ensdomains/
-@openzeppelin/=lib/v4-periphery/lib/openzeppelin-contracts/
 @uniswap/v4-core/=lib/v4-periphery/lib/v4-core/
 ds-test/=lib/v4-periphery/lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/v4-periphery/lib/openzeppelin-contracts/lib/erc4626-tests/
@@ -20,5 +19,5 @@ solidity-stringutils/=lib/squeeth-monorepo/packages/crab-netting/lib/squeeth-mon
 v3-core/=lib/squeeth-monorepo/packages/zen-bull-vault/lib/v3-core/
 v3-periphery/=lib/squeeth-monorepo/packages/zen-bull-netting/lib/v3-periphery/contracts/
 
-@eigenlayer-contracts/=mev-auction-avs/contracts/lib/eigenlayer-middleware/lib/eigenlayer-contracts/
-@eigenlayer-middleware/=mev-auction-avs/contracts/lib/eigenlayer-middleware/
+@eigenlayer-contracts/=lib/eigenlayer-middleware/lib/eigenlayer-contracts/
+@eigenlayer-middleware/=lib/eigenlayer-middleware/
