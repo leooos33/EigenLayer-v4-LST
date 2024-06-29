@@ -3,19 +3,16 @@ pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 
-import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
-import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
-
-import {PoolManager} from "v4-core/PoolManager.sol";
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
-
-import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
-
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
-import {BalanceDelta, BalanceDeltaLibrary, toBalanceDelta} from "v4-core/types/BalanceDelta.sol";
-import {BeforeSwapDelta} from "v4-core/types/BeforeSwapDelta.sol";
+import {HookEnabledSwapRouter} from "@test/libraries/HookEnabledSwapRouter.sol";
+import {OptionTestBase} from "@test/libraries/OptionTestBase.sol";
+
+import {PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
+import {CurrencyLibrary, Currency} from "v4-core/types/Currency.sol";
+import {CallETH} from "@src/CallETH.sol";
+
+import {IOption} from "@src/interfaces/IOption.sol";
 
 import {OptionRebalancingTaskManager} from "@src/avs/OptionRebalancingTaskManager.sol";
 import {IOptionRebalancingTaskManager} from "@src/avs/IOptionRebalancingTaskManager.sol";
@@ -25,7 +22,11 @@ import {IPauserRegistry} from "@eigenlayer-middleware/lib/eigenlayer-contracts/s
 import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
 import {TransparentUpgradeableProxy} from "@eigenlayer-middleware/lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-contract TestAVSRebalancingCall is Test, Deployers {
+import {OptionTestBase} from "./libraries/OptionTestBase.sol";
+
+import "forge-std/console.sol";
+
+contract AVSRebalancingCallTest is OptionTestBase {
     OptionRebalancingServiceManager sm;
     OptionRebalancingServiceManager smImplementation;
     OptionRebalancingTaskManager tm;
@@ -38,21 +39,131 @@ contract TestAVSRebalancingCall is Test, Deployers {
     address generator =
         address(uint160(uint256(keccak256(abi.encodePacked("generator")))));
 
+    using PoolIdLibrary for PoolId;
     using CurrencyLibrary for Currency;
-    using BalanceDeltaLibrary for BalanceDelta;
-
-    MockERC20 token; // our token to use in the ETH-TOKEN pool
-
-    // Native tokens are represented by address(0)
-    Currency ethCurrency = Currency.wrap(address(0));
-    Currency tokenCurrency;
-
-    // MevAuctionHook hook;
-    IPoolManager poolManager; // Declare poolManager
-
-    uint160 constant SQRT_RATIO_1_1 = 79228162514264337593543950336;
 
     function setUp() public {
+        deploy_avs_magic();
+
+        deployFreshManagerAndRouters();
+
+        labelTokens();
+        create_and_seed_morpho_market();
+        init_hook();
+        create_and_approve_accounts();
+
+        vm.prank(tm.owner());
+        tm.setOptionHook(address(hook));
+    }
+
+    function test_CreateNewTask() public {
+        vm.prank(generator);
+        tm.createNewTask(0, generator);
+        assertEq(tm.latestTaskNum(), 1);
+    }
+
+    function test_simulateWatchTowerEmptyCreateTasks() public {
+        vm.prank(generator);
+        tm.createRebalanceTask();
+        assertEq(tm.latestTaskNum(), 0);
+    }
+
+    function test_deposit() public {
+        uint256 amountToDeposit = 100 ether;
+        deal(address(WSTETH), address(alice.addr), amountToDeposit);
+        vm.prank(alice.addr);
+        optionId = hook.deposit(key, amountToDeposit, alice.addr);
+
+        assertOptionV4PositionLiquidity(optionId, 11433916692172150);
+        assertEqBalanceStateZero(alice.addr);
+        assertEqBalanceStateZero(address(hook));
+        assertEqMorphoState(
+            address(hook),
+            0,
+            0,
+            amountToDeposit / hook.cRatio()
+        );
+        IOption.OptionInfo memory info = hook.getOptionInfo(optionId);
+        assertEq(info.fee, 0);
+    }
+
+    function test_swap_price_up() public {
+        test_deposit();
+
+        deal(address(USDC), address(swapper.addr), 4513632092);
+
+        swapUSDC_WSTETH_Out(1 ether);
+
+        assertEqBalanceState(swapper.addr, 1 ether, 0);
+        assertEqBalanceState(address(hook), 0, 0, 0, 16851686274526807531);
+        assertEqMorphoState(address(hook), 0, 4513632092000000, 50 ether);
+    }
+
+    function test_simulateWatchTowerCreateTasks() public {
+        test_swap_price_up();
+
+        vm.prank(generator);
+        tm.createRebalanceTask();
+        assertEq(tm.latestTaskNum(), 1);
+    }
+
+    function test_swap_price_up_then_watchtower_rebalance() public {
+        test_swap_price_up();
+
+        vm.prank(generator);
+        tm.createRebalanceTask();
+        assertEq(tm.latestTaskNum(), 1);
+
+        vm.prank(generator);
+        hook.priceRebalance(key, 0);
+
+        assertEqBalanceState(address(hook), 0, 0);
+        assertEqBalanceState(alice.addr, 0, 0);
+        assertOptionV4PositionLiquidity(optionId, 0);
+        assertEqMorphoState(address(hook), 0, 0, 49999736322669483551);
+    }
+
+    // -- Helpers --
+
+    function init_hook() internal {
+        router = new HookEnabledSwapRouter(manager);
+
+        address hookAddress = address(
+            uint160(
+                Hooks.AFTER_SWAP_FLAG |
+                    Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
+                    Hooks.AFTER_INITIALIZE_FLAG
+            )
+        );
+        deployCodeTo("CallETH.sol", abi.encode(manager, marketId), hookAddress);
+        CallETH _hook = CallETH(hookAddress);
+
+        uint160 initialSQRTPrice = TickMath.getSqrtPriceAtTick(-192232);
+
+        (key, ) = initPool(
+            Currency.wrap(address(WSTETH)),
+            Currency.wrap(address(USDC)),
+            _hook,
+            200,
+            initialSQRTPrice,
+            ZERO_BYTES
+        );
+
+        hook = IOption(hookAddress);
+    }
+
+    function create_and_seed_morpho_market() internal {
+        create_morpho_market(
+            address(USDC),
+            address(WSTETH),
+            915000000000000000,
+            4487851340816804029821232973 //4487 usdc for eth
+        );
+
+        provideLiquidityToMorpho(address(USDC), 10000 * 1e6);
+    }
+
+    function deploy_avs_magic() internal {
         emit log("Setting up BLSMockAVSDeployer");
         avsDeployer = new BLSMockAVSDeployer();
         avsDeployer._setUpBLSMockAVSDeployer();
@@ -103,11 +214,5 @@ contract TestAVSRebalancingCall is Test, Deployers {
         emit log(
             "TransparentUpgradeableProxy for OptionRebalancingTaskManager deployed"
         );
-    }
-
-    function testCreateNewTask() public {
-        vm.prank(generator);
-        tm.createNewTask(0);
-        assertEq(tm.latestTaskNum(), 1);
     }
 }

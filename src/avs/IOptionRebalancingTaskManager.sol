@@ -14,6 +14,8 @@ interface IOptionRebalancingTaskManager {
 
     struct Task {
         uint256 optionId;
+        address firstResponder;
+        uint256 created;
     }
     struct TaskResponse {
         uint32 referenceTaskIndex;
@@ -25,7 +27,7 @@ interface IOptionRebalancingTaskManager {
     }
 
     // FUNCTIONS
-    function createNewTask(uint256 optionId) external;
+    function createNewTask(uint256 optionId, address firstResponder) external;
 
     function taskNumber() external view returns (uint32);
 }

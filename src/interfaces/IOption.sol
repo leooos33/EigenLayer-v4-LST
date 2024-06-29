@@ -62,4 +62,6 @@ interface IOption {
         PoolKey memory key,
         uint256 optionId
     ) external view returns (uint128, int24, int24);
+
+    function optionIdCounter() external view returns (uint256);
 }

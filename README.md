@@ -78,12 +78,11 @@ make test_all
 
 Test call option
 ```
-make test_call
+make test_core
 ```
-
-or put option
+Test AVS task manager
 ```
-make test_put
+make test_avs
 ```
 
 ## Loyalty program using Brevis 

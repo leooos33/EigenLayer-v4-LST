@@ -12,6 +12,8 @@ import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRe
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 import "./IOptionRebalancingTaskManager.sol";
 
+import "@src/interfaces/IOption.sol";
+
 import "forge-std/console.sol";
 
 contract OptionRebalancingTaskManager is
@@ -26,15 +28,15 @@ contract OptionRebalancingTaskManager is
 
     /* CONSTANT */
     // The number of blocks from the task initialization within which the aggregator has to respond to
-    uint32 public immutable TASK_RESPONSE_WINDOW_BLOCK;
-    uint32 public constant TASK_CHALLENGE_WINDOW_BLOCK = 100;
-    uint256 internal constant _THRESHOLD_DENOMINATOR = 100;
+    uint32 public immutable TASK_RESPONSE_WINDOW_BLOCK = 100;
 
     /* STORAGE */
     // The latest task index
     uint32 public latestTaskNum;
     address public aggregator;
     address public generator;
+
+    IOption public optionHook;
 
     // mapping of task indices to all tasks hashes
     // when a task is created, task hash is stored here,
@@ -77,17 +79,34 @@ contract OptionRebalancingTaskManager is
         generator = _generator;
     }
 
+    function setOptionHook(address _optionHook) external onlyOwner {
+        optionHook = IOption(_optionHook);
+    }
+
     function setGenerator(address newGenerator) external onlyTaskGenerator {
         generator = newGenerator;
     }
 
+    // Anybody could call it, but the task will be emitted for all keepers to take
+    // Also the calling keeper will have a time window to respond to the task
+    function createRebalanceTask() external {
+        for (uint256 i = 0; i < optionHook.optionIdCounter(); i++) {
+            PoolKey memory key = optionHook.getOptionInfo(i).key;
+            if (optionHook.isPriceRebalance(key, i)) {
+                createNewTask(i, msg.sender);
+            }
+        }
+    }
+
     /* FUNCTIONS */
     // NOTE: this function creates new auction task, assigns it a taskId
-    function createNewTask(uint256 optionId) external {
+    function createNewTask(uint256 optionId, address firstResponder) public {
         console.log("createNewTask");
         // create a new task struct
         Task memory newTask;
         newTask.optionId = optionId;
+        newTask.firstResponder = firstResponder;
+        newTask.created = block.number;
 
         allTaskHashes[latestTaskNum] = keccak256(abi.encode(newTask));
 
@@ -115,6 +134,14 @@ contract OptionRebalancingTaskManager is
         require(
             allTaskResponses[taskResponse.referenceTaskIndex] == bytes32(0),
             "Aggregator has already responded to the task"
+        );
+
+        // Here is the logic what allows only firstResponder to respond to the task in the given time window
+        // After this anybody could respond. Also firstResponder should be penalized if not responded in time
+        require(
+            task.firstResponder == msg.sender &&
+                block.timestamp < task.created + TASK_RESPONSE_WINDOW_BLOCK,
+            "Only first responder can respond to the task"
         );
 
         TaskResponseMetadata memory taskResponseMetadata = TaskResponseMetadata(
