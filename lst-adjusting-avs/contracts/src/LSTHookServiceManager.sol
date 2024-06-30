@@ -2,19 +2,19 @@
 pragma solidity ^0.8.9;
 
 import "../lib/eigenlayer-middleware/lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-import "./IMatchingHookTaskManager.sol";
+import "./ILSTHookTaskManager.sol";
 import "../lib/eigenlayer-middleware/src/ServiceManagerBase.sol";
 
-contract MatchingHookServiceManager is ServiceManagerBase {
+contract LSTHookServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
-    IMatchingHookTaskManager public immutable MatchingHookTaskManager;
+    ILSTHookTaskManager public immutable LSTHookTaskManager;
 
     /// @notice when applied to a function, ensures that the function is only callable by the `registryCoordinator`.
-    modifier onlyMatchingHookTaskManager() {
+    modifier onlyLSTHookTaskManager() {
         require(
-            msg.sender == address(MatchingHookTaskManager),
-            "onlyMatchingHookTaskManager: not from credible squaring task manager"
+            msg.sender == address(LSTHookTaskManager),
+            "onlyLSTHookTaskManager: not from credible squaring task manager"
         );
         _;
     }
@@ -23,16 +23,9 @@ contract MatchingHookServiceManager is ServiceManagerBase {
         IAVSDirectory _avsDirectory,
         IRegistryCoordinator _registryCoordinator,
         IStakeRegistry _stakeRegistry,
-        IMatchingHookTaskManager _MatchingHookTaskManager
-    )
-        ServiceManagerBase(
-            _avsDirectory,
-            IPaymentCoordinator(address(0)), // inc-sq doesn't need to deal with payments
-            _registryCoordinator,
-            _stakeRegistry
-        )
-    {
-        MatchingHookTaskManager = _MatchingHookTaskManager;
+        ILSTHookTaskManager _LSTHookTaskManager
+    ) ServiceManagerBase(_avsDirectory, _registryCoordinator, _stakeRegistry) {
+        LSTHookTaskManager = _LSTHookTaskManager;
     }
 
     /// @notice Called in the event of challenge resolution, in order to forward a call to the Slasher, which 'freezes' the `operator`.
@@ -40,7 +33,7 @@ contract MatchingHookServiceManager is ServiceManagerBase {
     ///      We recommend writing slashing logic without integrating with the Slasher at this point in time.
     function freezeOperator(
         address operatorAddr
-    ) external onlyMatchingHookTaskManager {
+    ) external onlyLSTHookTaskManager {
         // slasher.freezeOperator(operatorAddr);
     }
 }

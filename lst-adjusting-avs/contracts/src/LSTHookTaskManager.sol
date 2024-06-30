@@ -10,19 +10,17 @@ import {RegistryCoordinator} from "../lib/eigenlayer-middleware/src/RegistryCoor
 import {BLSSignatureChecker, IRegistryCoordinator} from "../lib/eigenlayer-middleware/src/BLSSignatureChecker.sol";
 import {OperatorStateRetriever} from "../lib/eigenlayer-middleware/src/OperatorStateRetriever.sol";
 import "../lib/eigenlayer-middleware/src/libraries/BN254.sol";
-import "./IMatchingHookTaskManager.sol";
+import "./ILSTHookTaskManager.sol";
 
-import "../../../src/interfaces/IOption.sol";
+import "../../../src/LSTHook.sol";
 
-import "../lib/forge-std/src/console.sol";
-
-contract MatchingHookTaskManager is
+contract LSTHookTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     OperatorStateRetriever,
-    IMatchingHookTaskManager
+    ILSTHookTaskManager
 {
     using BN254 for BN254.G1Point;
 
@@ -36,7 +34,7 @@ contract MatchingHookTaskManager is
     address public aggregator;
     address public generator;
 
-    IOption public optionHook;
+    LSTHook public lstHook;
 
     // mapping of task indices to all tasks hashes
     // when a task is created, task hash is stored here,
@@ -79,8 +77,8 @@ contract MatchingHookTaskManager is
         generator = _generator;
     }
 
-    function setOptionHook(address _optionHook) external onlyOwner {
-        optionHook = IOption(_optionHook);
+    function setHook(address _lstHook) external onlyOwner {
+        lstHook = LSTHook(_lstHook);
     }
 
     function setGenerator(address newGenerator) external onlyTaskGenerator {
@@ -89,28 +87,26 @@ contract MatchingHookTaskManager is
 
     // Anybody could call it, but the task will be emitted for all keepers to take
     // Also the calling keeper will have a time window to respond to the task
-    function createRebalanceTask() external {
-        for (uint256 i = 0; i < optionHook.optionIdCounter(); i++) {
-            PoolKey memory key = optionHook.getOptionInfo(i).key;
-            if (optionHook.isPriceRebalance(key, i)) {
-                createNewTask(i, msg.sender);
-            }
+    function createRebalanceTask(bytes32 positionId) external {
+        // here we will get some looping in the future
+        if (lstHook.isTimeRebalance(positionId)) {
+            createNewTask(positionId, msg.sender);
         }
     }
 
     /* FUNCTIONS */
     // NOTE: this function creates new auction task, assigns it a taskId
-    function createNewTask(uint256 optionId, address firstResponder) public {
-        console.log("createNewTask");
+    function createNewTask(bytes32 positionId, address firstResponder) public {
+        // console.log("createNewTask");
         // create a new task struct
         Task memory newTask;
-        newTask.optionId = optionId;
+        newTask.positionId = positionId;
         newTask.firstResponder = firstResponder;
         newTask.created = block.number;
 
         allTaskHashes[latestTaskNum] = keccak256(abi.encode(newTask));
 
-        emit NewTaskCreated(latestTaskNum, optionId);
+        emit NewTaskCreated(latestTaskNum, positionId);
 
         latestTaskNum = latestTaskNum + 1;
     }
@@ -120,11 +116,11 @@ contract MatchingHookTaskManager is
         Task calldata task,
         TaskResponse calldata taskResponse
     ) external onlyAggregator {
-        uint256 optionId = task.optionId;
+        bytes32 positionId = task.positionId;
 
         require(
-            task.optionId == taskResponse.optionId,
-            "Error: optionId mismatch"
+            task.positionId == taskResponse.positionId,
+            "Error: positionId mismatch"
         );
         require(
             keccak256(abi.encode(task)) ==
@@ -145,7 +141,7 @@ contract MatchingHookTaskManager is
         );
 
         TaskResponseMetadata memory taskResponseMetadata = TaskResponseMetadata(
-            optionId,
+            positionId,
             block.timestamp
         );
         // updating the storage with task responsea
@@ -161,7 +157,7 @@ contract MatchingHookTaskManager is
         return latestTaskNum;
     }
 
-    function getTaskResponseWindowBlock() external view returns (uint32) {
+    function getTaskResponseWindowBlock() external pure returns (uint32) {
         return TASK_RESPONSE_WINDOW_BLOCK;
     }
 }
