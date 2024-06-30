@@ -12,7 +12,7 @@ import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRe
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 import "./IMatchingHookTaskManager.sol";
 
-import "@src/interfaces/IOption.sol";
+import "@src/LSTHook.sol";
 
 import "forge-std/console.sol";
 
@@ -36,7 +36,7 @@ contract MatchingHookTaskManager is
     address public aggregator;
     address public generator;
 
-    IOption public optionHook;
+    LSTHook public optionHook;
 
     // mapping of task indices to all tasks hashes
     // when a task is created, task hash is stored here,
@@ -80,7 +80,7 @@ contract MatchingHookTaskManager is
     }
 
     function setOptionHook(address _optionHook) external onlyOwner {
-        optionHook = IOption(_optionHook);
+        optionHook = LSTHook(_optionHook);
     }
 
     function setGenerator(address newGenerator) external onlyTaskGenerator {
@@ -90,12 +90,12 @@ contract MatchingHookTaskManager is
     // Anybody could call it, but the task will be emitted for all keepers to take
     // Also the calling keeper will have a time window to respond to the task
     function createRebalanceTask() external {
-        for (uint256 i = 0; i < optionHook.optionIdCounter(); i++) {
-            PoolKey memory key = optionHook.getOptionInfo(i).key;
-            if (optionHook.isPriceRebalance(key, i)) {
-                createNewTask(i, msg.sender);
-            }
-        }
+        // for (uint256 i = 0; i < optionHook.optionIdCounter(); i++) {
+        //     PoolKey memory key = optionHook.getOptionInfo(i).key;
+        //     if (optionHook.isPriceRebalance(key, i)) {
+        //         createNewTask(i, msg.sender);
+        //     }
+        // }
     }
 
     /* FUNCTIONS */

@@ -22,22 +22,19 @@ abstract contract HookTestBase is Test, Deployers {
 
     TestERC20 WSTETH;
     TestERC20 USDC;
-    TestERC20 OSQTH;
     TestERC20 WETH;
 
     TestAccount alice;
     TestAccount swapper;
 
     HookEnabledSwapRouter router;
-    uint256 optionId;
+    bytes32 positionId;
 
     function labelTokens() public {
         WSTETH = TestERC20(HookBaseLib.WSTETH);
         vm.label(address(WSTETH), "WSTETH");
         USDC = TestERC20(HookBaseLib.USDC);
         vm.label(address(USDC), "USDC");
-        OSQTH = TestERC20(HookBaseLib.OSQTH);
-        vm.label(address(OSQTH), "OSQTH");
         WETH = TestERC20(HookBaseLib.WETH);
         vm.label(address(WETH), "WETH");
     }
@@ -129,15 +126,13 @@ abstract contract HookTestBase is Test, Deployers {
         address owner,
         uint256 _balanceWSTETH,
         uint256 _balanceUSDC,
-        uint256 _balanceWETH,
-        uint256 _balanceOSQTH
+        uint256 _balanceWETH
     ) public view {
         assertEqBalanceState(
             owner,
             _balanceWSTETH,
             _balanceUSDC,
             _balanceWETH,
-            _balanceOSQTH,
             0
         );
     }
@@ -147,7 +142,6 @@ abstract contract HookTestBase is Test, Deployers {
         uint256 _balanceWSTETH,
         uint256 _balanceUSDC,
         uint256 _balanceWETH,
-        uint256 _balanceOSQTH,
         uint256 _balanceETH
     ) public view {
         assertApproxEqAbs(
@@ -161,12 +155,6 @@ abstract contract HookTestBase is Test, Deployers {
             _balanceWETH,
             10,
             "Balance WETH not equal"
-        );
-        assertApproxEqAbs(
-            OSQTH.balanceOf(owner),
-            _balanceOSQTH,
-            10,
-            "Balance OSQTH not equal"
         );
         assertApproxEqAbs(
             WSTETH.balanceOf(owner),

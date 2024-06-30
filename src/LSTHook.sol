@@ -35,7 +35,9 @@ contract LSTHook is BaseHook {
     IERC20 WSTETH = IERC20(HookBaseLib.WSTETH);
     IERC20 WETH = IERC20(HookBaseLib.WETH);
     IERC20 USDC = IERC20(HookBaseLib.USDC);
-    IERC20 OSQTH = IERC20(HookBaseLib.OSQTH);
+
+    error AddLiquidityThroughHook();
+    error NotEnoughTimePassed();
 
     struct PositionInfo {
         PoolKey key;
@@ -48,7 +50,7 @@ contract LSTHook is BaseHook {
     mapping(bytes32 => PositionInfo) positionInfo;
 
     // Setup for dev then depend on the protocol and AVS
-    uint256 public priceScalingFactor = 1e18 + 1000;
+    uint256 public priceScalingFactor = 1e18 + 1e16;
     uint256 public distanceBetweenUpdates = 4 * 60 * 24;
 
     function getPositionInfo(
@@ -71,7 +73,6 @@ contract LSTHook is BaseHook {
         USDC.approve(HookBaseLib.SWAP_ROUTER, type(uint256).max);
         WETH.approve(HookBaseLib.SWAP_ROUTER, type(uint256).max);
         WSTETH.approve(HookBaseLib.SWAP_ROUTER, type(uint256).max);
-        OSQTH.approve(HookBaseLib.SWAP_ROUTER, type(uint256).max);
 
         return LSTHook.afterInitialize.selector;
     }
@@ -101,39 +102,39 @@ contract LSTHook is BaseHook {
             });
     }
 
-    /// @notice  Disable adding liquidity through the PM
-    function beforeAddLiquidity(
+    function modifyLiquidity(
         address user,
         PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
-        bytes calldata
-    ) external override returns (bytes4) {
+        IPoolManager.ModifyLiquidityParams calldata params
+    ) external returns (bytes32) {
         poolManager.unlock(
-            abi.encodeCall(this.unlockModifyPosition, (key, params))
+            abi.encodeCall(this.unlockModifyPosition, (user, key, params))
         );
 
-        bytes32 id = keccak256(
-            abi.encodePacked(
-                user,
-                params.tickLower,
-                params.tickUpper,
-                params.liquidityDelta,
-                params.salt
-            )
-        );
+        return
+            keccak256(
+                abi.encodePacked(
+                    user,
+                    params.tickLower,
+                    params.tickUpper,
+                    params.liquidityDelta,
+                    params.salt
+                )
+            );
+    }
 
-        positionInfo[id] = PositionInfo({
-            key: key,
-            tickLower: params.tickLower,
-            tickUpper: params.tickUpper,
-            liquidity: params.liquidityDelta,
-            lastUpdated: block.number
-        });
-
-        return LSTHook.beforeAddLiquidity.selector;
+    /// @notice  Disable adding liquidity through the PM
+    function beforeAddLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        revert AddLiquidityThroughHook();
     }
 
     function unlockModifyPosition(
+        address user,
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params
     ) external selfOnly returns (bytes memory) {
@@ -184,20 +185,43 @@ contract LSTHook is BaseHook {
                 false
             );
         }
+
+        bytes32 id = keccak256(
+            abi.encodePacked(
+                user,
+                params.tickLower,
+                params.tickUpper,
+                params.liquidityDelta,
+                params.salt
+            )
+        );
+
+        // account for user here, maybe some NFT
+        positionInfo[id] = PositionInfo({
+            key: key,
+            tickLower: params.tickLower,
+            tickUpper: params.tickUpper,
+            liquidity: params.liquidityDelta,
+            lastUpdated: block.number
+        });
+
         return ZERO_BYTES;
     }
 
-    function isPriceRebalance(bytes32 positionId) public view returns (bool) {
+    function isTimeRebalance(bytes32 positionId) public view returns (bool) {
         PositionInfo memory info = positionInfo[positionId];
+        // console.log(block.number);
+        // console.log(info.lastUpdated);
+        // console.log(block.number - info.lastUpdated);
+        // console.log(distanceBetweenUpdates);
         if (block.number - info.lastUpdated < distanceBetweenUpdates) {
             return false;
         }
         return true;
     }
 
-    function priceRebalance(bytes32 positionId) external {
-        console.log(">> priceRebalance");
-        require(isPriceRebalance(positionId), "Not enough price change");
+    function timeRebalance(bytes32 positionId) external {
+        if (!isTimeRebalance(positionId)) revert NotEnoughTimePassed();
 
         // This could be done with less slippage and more effectively if some CoWs or matching engine is utilized on the AVS side
 
@@ -207,6 +231,7 @@ contract LSTHook is BaseHook {
                 abi.encodeCall(
                     this.unlockModifyPosition,
                     (
+                        msg.sender,
                         info.key,
                         IPoolManager.ModifyLiquidityParams({
                             tickLower: info.tickLower,
@@ -242,11 +267,13 @@ contract LSTHook is BaseHook {
         console.logInt(tickUpper);
 
         // Here we should do some smart swaps to get the best price. In other pools bro.
+        // Also we should recalculate liquidity based on the curve, but will do it in next versions.
 
         poolManager.unlock(
             abi.encodeCall(
                 this.unlockModifyPosition,
                 (
+                    msg.sender,
                     info.key,
                     IPoolManager.ModifyLiquidityParams({
                         tickLower: tickLower,
@@ -259,12 +286,20 @@ contract LSTHook is BaseHook {
         );
 
         positionInfo[positionId].lastUpdated = block.number;
+        positionInfo[positionId].tickLower = tickLower;
+        positionInfo[positionId].tickUpper = tickUpper;
+        positionInfo[positionId].liquidity = info.liquidity;
     }
 
     function getPosition(
-        bytes32 optionId
+        bytes32 positionId
     ) public view returns (uint128, int24, int24) {
-        PositionInfo memory info = positionInfo[optionId];
+        PositionInfo memory info = positionInfo[positionId];
+
+        // console.log("Position:");
+        // console.logInt(info.liquidity);
+        // console.logInt(info.tickLower);
+        // console.logInt(info.tickUpper);
 
         Position.Info memory _positionInfo = StateLibrary.getPosition(
             poolManager,
