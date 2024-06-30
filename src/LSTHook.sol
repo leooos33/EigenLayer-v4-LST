@@ -210,6 +210,9 @@ contract LSTHook is BaseHook {
 
     function isTimeRebalance(bytes32 positionId) public view returns (bool) {
         PositionInfo memory info = positionInfo[positionId];
+        if (info.lastUpdated == 0) {
+            return false;
+        }
         // console.log(block.number);
         // console.log(info.lastUpdated);
         // console.log(block.number - info.lastUpdated);
